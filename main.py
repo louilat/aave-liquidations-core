@@ -37,9 +37,9 @@ delta_t = 1 / 365
 
 client_s3 = boto3.client(
     "s3",
-    endpoint_url = 'https://'+'minio-simple.lab.groupe-genes.fr',
-    aws_access_key_id= os.environ["ACCESS_KEY_ID"], 
-    aws_secret_access_key= os.environ["SECRET_ACCESS_KEY"], 
+    endpoint_url="https://" + "minio-simple.lab.groupe-genes.fr",
+    aws_access_key_id=os.environ["ACCESS_KEY_ID"],
+    aws_secret_access_key=os.environ["SECRET_ACCESS_KEY"],
 )
 
 
