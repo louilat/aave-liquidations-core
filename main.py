@@ -45,6 +45,7 @@ client_s3 = boto3.client(
 
 day = start
 while day <= stop:
+    print("***Treating day: ", day, "***")
     # Reserves and raw prices data
     reserves = get_reserves_data(day=day)
     liquidation_day_prices = get_hourly_prices(day=day)

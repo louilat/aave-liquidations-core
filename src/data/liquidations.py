@@ -12,4 +12,6 @@ def get_liquidated_users_list(day: datetime) -> list[tuple[str, str]]:
         verify=False,
     )
     liquidations = pd.json_normalize(resp.json())
+    if liquidations.empty:
+        return []
     return list(zip(liquidations.blockNumber, liquidations.user))
