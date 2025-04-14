@@ -81,5 +81,13 @@ def compute_health_factor_trajectory(user_balances: DataFrame) -> DataFrame:
     balances_ = balances_.groupby(["BlockNumber", "Timestamp"], as_index=False).agg(
         {"hf_numerator": "sum", "currentVariableDebtUSD": "sum"}
     )
-    balances_["hf"] = balances_.hf_numerator / balances_.currentVariableDebtUSD
+    balances_["hf"] = np.where(
+        balances_.currentVariableDebtUSD == 0,
+        np.inf,
+        balances_.hf_numerator / np.where(
+            balances_.currentVariableDebtUSD == 0,
+            np.nan,
+            balances_.currentVariableDebtUSD
+        )
+    )
     return balances_[["BlockNumber", "Timestamp", "hf"]]
