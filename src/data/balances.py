@@ -79,7 +79,7 @@ def add_liquidation_to_user_events(user_events, liquidation_events, liquidation_
         withdraw_reserve = liq["collateralAsset"]
         repay_amount = liq["debtToCover"]
         repay_reserve = liq["debtAsset"]
-        print(user_events)
+
         user_events.loc[len(user_events)] = {
             "blockNumber": block,
             "reserve": withdraw_reserve,
@@ -100,7 +100,7 @@ def _find_closest_indexes(row, reserves_data_updated, reserves, liquidityIndex):
     indexes = reserves_data_updated[reserves_data_updated.reserve == asset].reset_index(
         drop=True
     )
-    print(asset)
+
     try:
         idx = np.argmin(np.abs(indexes.blockNumber - block))
     except ValueError:
@@ -160,7 +160,12 @@ def compute_user_balances(
         future_reserve_mask = (balances.BlockNumber >= block) & (
             balances.underlyingAsset == asset
         )
-        liquidityIndex = balances[future_reserve_mask].reset_index().liquidityIndex[0]
+        try:
+            liquidityIndex = balances[future_reserve_mask].reset_index().liquidityIndex[0]
+        except KeyError as e:
+            print(e)
+            liquidityIndex = np.nan
+    
         if event["action"] == "supply":
             balances.loc[future_reserve_mask, "currentATokenBalance"] += amount
         elif event["action"] == "borrow":
