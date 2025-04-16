@@ -9,12 +9,16 @@ from web3 import contract
 def get_user_balances(user: str, day: datetime) -> DataFrame:
     month = day.ctime()[4:7]
     day_str = "-".join([day.strftime("%Y"), month, day.strftime("%d")])
-    resp = requests.get(
-        "https://aavedata.lab.groupe-genes.fr/user-selec-balances",
-        params={"date": day_str, "user": user},
-        verify=False,
-    )
-    return pd.json_normalize(resp.json())
+    try: 
+        resp = requests.get(
+            "https://aavedata.lab.groupe-genes.fr/user-selec-balances",
+            params={"date": day_str, "user": user},
+            verify=False,
+        )
+        balances = pd.json_normalize(resp.json())
+    except NotImplementedError:
+        balances = DataFrame()
+    return balances
 
 
 def get_user_events(user: str, day: datetime):

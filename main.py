@@ -33,8 +33,8 @@ from src.liquidation_proba.liquidation_estimation import (
 
 # Run Parameters
 output_path = "try/liquidation_trajectories/"
-start = datetime(2024, 4, 3)
-stop = datetime(2024, 4, 3)
+start = datetime(2024, 4, 5)
+stop = datetime(2024, 4, 5)
 vol_estimation_nb_days = 62
 delta_t = 1 / 365
 
@@ -89,12 +89,19 @@ while day <= stop:
     day_trajectories = DataFrame()
     day_user_balances = DataFrame()
     liquidations_day = get_liquidations(day=day)
-    for liquidated_user in liquidations_day.user.unique().tolist():
+    if len(liquidations_day) > 0:
+        liquidated_users_list = liquidations_day.user.unique().tolist()
+    else:
+        liquidated_users_list = []
+    
+    for liquidated_user in liquidated_users_list:
         print("User is: ", liquidated_user)
         liquidations = liquidations_day[liquidations_day.user == liquidated_user]
         user_initial_balance = get_user_balances(
             user=liquidated_user, day=day - timedelta(days=1)
         )
+        if user_initial_balance.empty:
+            continue
         user_events = get_user_events(user=liquidated_user, day=day)
         add_liquidation_to_user_events(
             user_events=user_events,
