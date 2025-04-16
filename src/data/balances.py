@@ -34,6 +34,24 @@ def get_user_events(user: str, day: datetime):
         for ev in user_events:
             ev["action"] = event
         all_user_events.extend(user_events)
+
+    # AToken transfer
+    resp = requests.get(
+        f"https://aavedata.lab.groupe-genes.fr/events/balancetransfer",
+        params={"date": day_str},
+        verify=False,
+    )
+    # Send
+    user_events = [ev for ev in resp.json() if ev["from"] == user]
+    for ev in user_events:
+        ev["action"] = "balancetransfer_send"
+    all_user_events.extend(user_events)
+    # Receive
+    user_events = [ev for ev in resp.json() if ev["to"] == user]
+    for ev in user_events:
+        ev["action"] = "balancetransfer_receive"
+    all_user_events.extend(user_events)
+
     try:
         all_user_events = pd.json_normalize(all_user_events)[
             ["blockNumber", "reserve", "action", "amount"]
@@ -142,6 +160,7 @@ def compute_user_balances(
         future_reserve_mask = (balances.BlockNumber >= block) & (
             balances.underlyingAsset == asset
         )
+        liquidityIndex = balances[future_reserve_mask].reset_index().liquidityIndex[0]
         if event["action"] == "supply":
             balances.loc[future_reserve_mask, "currentATokenBalance"] += amount
         elif event["action"] == "borrow":
@@ -150,6 +169,14 @@ def compute_user_balances(
             balances.loc[future_reserve_mask, "currentATokenBalance"] -= amount
         elif event["action"] == "repay":
             balances.loc[future_reserve_mask, "currentVariableDebt"] -= amount
+        elif event["action"] == "balancetransfer_send":
+            balances.loc[future_reserve_mask, "currentATokenBalance"] -= (
+                amount * liquidityIndex
+            )
+        elif event["action"] == "balancetransfer_receive":
+            balances.loc[future_reserve_mask, "currentATokenBalance"] += (
+                amount * liquidityIndex
+            )
 
     balances["currentATokenBalanceUSD"] = (
         balances.currentATokenBalance / 10**balances.decimals * balances.Price * 1e-8
@@ -159,32 +186,6 @@ def compute_user_balances(
     )
 
     return balances
-
-
-# def compute_user_balances(
-#     balances_before: DataFrame,
-#     balances_after: DataFrame,
-#     prices: DataFrame,
-#     liquidation_block: int,
-# ) -> DataFrame:
-#     prices_ = prices.copy()
-#     prices_.BlockNumber = prices_.BlockNumber.apply(int)
-#     prices_before = prices_[prices_.BlockNumber < liquidation_block]
-#     prices_after = prices_[prices_.BlockNumber >= liquidation_block]
-#     balances_before_ = prices_before.merge(
-#         balances_before,
-#         how="left",
-#         left_on="UnderlyingToken",
-#         right_on="underlyingAsset",
-#     ).dropna(subset="user_address")
-#     balances_after_ = prices_after.merge(
-#         balances_after,
-#         how="left",
-#         left_on="UnderlyingToken",
-#         right_on="underlyingAsset",
-#     ).dropna(subset="user_address")
-#     balances = pd.concat((balances_before_, balances_after_))
-#     return balances
 
 
 def _is_user_collateral_enabled(
@@ -238,7 +239,7 @@ def process_user_balances(
     """
 
     # Is collateral enabled
-    refBlock = user_balances.BlockNumber.apply(int).min()
+    refBlock = int(user_balances.BlockNumber.apply(int).min())
     collateral_enabled = []
     user_assets = user_balances.underlyingAsset.unique().tolist()
     for asset in user_assets:
@@ -251,13 +252,14 @@ def process_user_balances(
         )
         collateral_enabled.append(enabled)
 
+    print("Assets enabled as collateral by user: ", collateral_enabled)
     collateral_policy = pd.DataFrame(
-        {"underlyingAsset": user_assets, "collareral_enabled": collateral_enabled}
+        {"underlyingAsset": user_assets, "collateral_enabled": collateral_enabled}
     )
-    balances = balances.merge(collateral_policy, how="left", on="underlyingAsset")
+    balances = user_balances.merge(collateral_policy, how="left", on="underlyingAsset")
 
     # Add reserveLiquidationThreshold
-    balances = user_balances.merge(
+    balances = balances.merge(
         reserves[
             [
                 "underlyingAsset",

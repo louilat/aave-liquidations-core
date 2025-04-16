@@ -33,7 +33,7 @@ from src.liquidation_proba.liquidation_estimation import (
 
 # Run Parameters
 output_path = "try/liquidation_trajectories/"
-start = datetime(2024, 4, 1)
+start = datetime(2024, 4, 3)
 stop = datetime(2024, 4, 3)
 vol_estimation_nb_days = 62
 delta_t = 1 / 365
@@ -87,6 +87,7 @@ while day <= stop:
     reserves_data_updated = get_reserves_data_updated(day=day)
 
     day_trajectories = DataFrame()
+    day_user_balances = DataFrame()
     liquidations_day = get_liquidations(day=day)
     for liquidated_user in liquidations_day.user.unique().tolist():
         print("User is: ", liquidated_user)
@@ -122,7 +123,9 @@ while day <= stop:
         hf = compute_health_factor_trajectory(user_balances=balances)
         trajectory = probas.merge(hf, how="left", on=["BlockNumber", "Timestamp"])
         trajectory["user_address"] = liquidated_user
+        balances["user_address"] = liquidated_user
         day_trajectories = pd.concat((day_trajectories, trajectory))
+        day_user_balances = pd.concat((day_user_balances, balances))
 
     buffer = io.StringIO()
     day_trajectories.to_csv(buffer, index=False)
@@ -131,6 +134,16 @@ while day <= stop:
         Bucket="projet-datalab-group-jprat",
         Key=output_path
         + f"liquidation_trajectories_snapshot_date={day_str}/liquidation_trajectories.csv",
+        Body=buffer.getvalue(),
+    )
+
+    buffer = io.StringIO()
+    day_user_balances.to_csv(buffer, index=False)
+    day_str = day.strftime("%Y-%m-%d")
+    client_s3.put_object(
+        Bucket="projet-datalab-group-jprat",
+        Key=output_path
+        + f"liquidation_trajectories_snapshot_date={day_str}/users_balances.csv",
         Body=buffer.getvalue(),
     )
 
