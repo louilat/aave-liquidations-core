@@ -194,6 +194,18 @@ def compute_user_balances(
         balances.currentVariableDebt / 10**balances.decimals * balances.Price * 1e-8
     )
 
+    balances.currentATokenBalanceUSD = np.where(
+        balances.currentATokenBalanceUSD < 5,
+        0,
+        balances.currentATokenBalanceUSD
+    )
+
+    balances.currentVariableDebtUSD = np.where(
+        balances.currentVariableDebtUSD < 5,
+        0,
+        balances.currentVariableDebtUSD
+    )
+
     return balances
 
 
