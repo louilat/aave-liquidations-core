@@ -2,6 +2,7 @@ import pandas as pd
 from pandas import DataFrame
 from datetime import datetime
 import requests
+from requests.exceptions import ChunkedEncodingError
 import numpy as np
 from web3 import contract
 
@@ -26,11 +27,18 @@ def get_user_events(user: str, day: datetime):
     month = day.ctime()[4:7]
     day_str = "-".join([day.strftime("%Y"), month, day.strftime("%d")])
     for event in ["supply", "borrow", "withdraw", "repay"]:
-        resp = requests.get(
-            f"https://aavedata.lab.groupe-genes.fr/events/{event}",
-            params={"date": day_str},
-            verify=False,
-        )
+        try: 
+            resp = requests.get(
+                f"https://aavedata.lab.groupe-genes.fr/events/{event}",
+                params={"date": day_str},
+                verify=False,
+            )
+        except ChunkedEncodingError:
+            resp = requests.get(
+                f"https://aavedata.lab.groupe-genes.fr/events/{event}",
+                params={"date": day_str},
+                verify=False,
+            )
         if event in ["withdraw", "repay"]:
             user_events = [ev for ev in resp.json() if ev["user"] == user]
         else:
