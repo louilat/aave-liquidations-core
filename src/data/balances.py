@@ -48,11 +48,18 @@ def get_user_events(user: str, day: datetime):
         all_user_events.extend(user_events)
 
     # AToken transfer
-    resp = requests.get(
-        f"https://aavedata.lab.groupe-genes.fr/events/balancetransfer",
-        params={"date": day_str},
-        verify=False,
-    )
+    try:
+        resp = requests.get(
+            "https://aavedata.lab.groupe-genes.fr/events/balancetransfer",
+            params={"date": day_str},
+            verify=False,
+        )
+    except ChunkedEncodingError:
+        resp = requests.get(
+            "https://aavedata.lab.groupe-genes.fr/events/balancetransfer",
+            params={"date": day_str},
+            verify=False,
+        )
     # Send
     user_events = [ev for ev in resp.json() if ev["from"] == user]
     for ev in user_events:
