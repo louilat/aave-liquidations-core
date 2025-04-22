@@ -59,7 +59,7 @@ def compute_liquidation_proba(
         * detla_t
     )
     q_value = user_balances.a.sum() / np.sqrt(all_combinaisons.value.sum())
-    return norm.cdf(q_value)
+    return np.sqrt(all_combinaisons.value.sum()), user_balances.a.sum(), norm.cdf(q_value)
 
 
 def compute_liquidation_proba_trajectory(
@@ -68,7 +68,11 @@ def compute_liquidation_proba_trajectory(
     probas = user_balances.groupby(["BlockNumber", "Timestamp"]).apply(
         lambda x: compute_liquidation_proba(x, volatility, detla_t)
     )
-    probas = probas.reset_index().rename(columns={0: "proba_p1"})
+    probas = probas.reset_index().rename(columns={0: "value"})
+    probas["user_std"] = probas["value"].str[0]
+    probas["user_a"] = probas["value"].str[1]
+    probas["proba_p1"] = probas["value"].str[2]
+    # probas = probas.reset_index().rename(columns={0: "proba_p1"})
     probas["proba_p2"] = np.minimum(1, 2 * probas.proba_p1)
     return probas
 
